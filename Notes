@@ -1,0 +1,462 @@
+https://sundog-education.com/elasticsearch/ - For Step by step instructions
+
+RUN BELOW COMMANDS TO INSTALL ELASTIC SEARCH :
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+sudo apt-get install apt-transport-https
+echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+sudo apt-get update && sudo apt-get install elasticsearch
+
+Configure Elastic Search :
+sudo vi /etc/elasticsearch/elasticsearch.yml and update below values :
+nodes, network.host, discovery.seed_hosts, cluster.initial_master_nodes
+
+sudo /bin/systemctl daemon-reload
+sudo /bin/systemctl enable elasticsearch.service
+sudo /bin/systemctl start elasticsearch.service
+
+Check if elastic search started :
+curl -XGET 127.0.0.1:9200
+
+GET SHAKESPEARE SCHEMA:
+wget http://media.sundog-soft.com/es7/shakes-mapping.json
+Submit a Mapping sheet to es7:
+curl -H "Content-Type: application/json" -XPUT 127.0.0.1:9200/shakespeare --data-binary @shakes-mapping.json
+
+GET SHAKESPEARE DATA:
+wget http://media.sundog-soft.com/es7/shakespeare_7.0.json
+Submit a Data sheet to es7:
+curl -H "Content-Type: application/json" -XPOST '127.0.0.1:9200/shakespeare/_bulk' --data-binary @shakespeare_7.0.json
+
+SEARCH:
+curl -H "Content-Type: application/json" -XGET '127.0.0.1:9200/shakespeare/_search?pretty' -d '
+{
+    "query" : {
+        "match_phrase" : {
+            "text_entry" : "to be or not to be"
+        }
+    }
+}
+'
+=====================================================================================================
+THE ELASTICSEARCH STACK :
+
+Elasticsearch:
+- Started off as scalable Lucene.
+- Horizontally scalable search engine.
+- Each "shard" is an inverted index of documents.
+- But not just for full text search.
+- Can handle structure data and can aggregate data quickly.
+- Often a faster solution than Hadoop/Spark/Flink/etc.
+
+Kibana:
+- It sits on Elasticsearch engine.
+- Web UI for searching and visualizing.
+- Complex aggregations, graphs and charts.
+- Often used for log analysis.
+
+Logstash/Beats Framework:
+- Ways to feed data into Elasticsearch.
+- FileBeat can monitor log files, parse them, and import into Elasticsearch in near-real-time.
+- Logstash pushes data into Elasticsearch from may machines.
+- Not just log files.
+
+X-Pack:
+- Security, Alerting, Monitoring, Machine Learning and Graph Exploration.
+
+=================================================================================================
+
+The cURL Command:
+A way to issue HTTP requests from the command line :
+-> curl -H "Content-Type: application/json" <URL> -d '<BODY>'
+
+=================================================================================================
+
+Logical Concepts of Elasticsearch:
+
+Documents - 
+Are the things you are searching for. 
+Consider it as a row in Relational DBMS. 
+They can be more than text - any structured JSON data works. 
+Every document has a uniqueID (Implicit - Assigned by Elasticsearch or Explicit - Assigned by User) and a type.
+
+Indices - 
+Powers search into all documents within a collection of types. 
+Can have only one type of document within Index.
+Consider it as a Table in RDBMS.
+Contains "inverted indices" that let you search accross everything within them at once and "mappings" that defines schema for the data within.
+
+Inverted Index - 
+Consider an example : 
+Document 1 = Space: The final frontier. These are the voyages
+Document 2 = He's bad. He's number one. He's the space cowboy with a laser gun.
+
+Inverted Index
+space - 1,2
+the - 1,2
+final - 1
+
+Inverted index not only contains the document the word is present in but also the position of the word within the document.
+
+Check relevancy:
+TF-TDF means Term Frequency * Inverse Document Frequency.
+Term Frequency is how often a term appears in a given document.
+Document Frequency is how often a term appears in all documents.
+Term Frequency/Document Frequency measures the relevance of a term in a document.
+
+Using Indices :
+- RESTful API
+- Client API's using libraries specific to Programming Languages.
+- Analytic Tools such as Kibana
+
+=========================================================================================================
+
+What's new in Elasticsearch 7 ?
+- The concept of document types is deprecated.
+- Elasticsearch SQL is "production ready".
+- Lots of changes to defaults (ie, number of shards, replication).
+- Lucene 8 under the hood.
+- Several X-Pack plugins included with ES itself.
+- Bundled java runtime. 
+- Cross-cluster replication is "production-ready".
+- Index Lifecycle Management (ILM).
+- Lots of performance improvement.
+
+===========================================================================================================
+
+How Elasticsearch scales?
+
+An Index is Split into shards.
+Documents are hashed to a particular shard.
+Each shard may be on a different node in a cluster.
+Each shard is a self-contained lucene index of its own.
+
+Primary and Replica Shards :
+TO maintain a resilliance to failure.
+Node is nothing but instance of Elasticsearch.
+
+Consider an example -
+Node 0 - Primary 1, Replica 0
+Node 1 - Replica 0, Replica 1
+Node 2 - Primary 0, Replica 1
+
+The number of Primary Shards cannot be changed later. Sample request is :
+PUT /testindex
+{
+    "settings": {
+        "number_of_shards": 3,
+        "number_of_replicas": 1
+    }
+}
+So this above request will have 3 primary shards and 3 replicas for each of the primary shards.
+
+======================================================================================================
+
+Connecting to your cluster remotely :
+- First we have to open port 20 on machine where we have Elasticsearch installed so that we can make a connection open from remote.
+- Install putty on windows to make ssh connection.
+- Connect to your cluster.
+
+SSH command to connect:
+Type this command on CMD - ssh goelg@127.0.0.1 -p 22
+
+========================================================================================================
+
+What is mappings ?
+A mapping is a schema definition, elasticsearch has reasonable defaults, but sometimes you need to customize them. For example - 
+curl -XPUT 127.0.0.1:9200/movies -d '
+{
+    "mappings": {
+        "properties": {
+            "year": {
+                "type": "date"
+            }
+        }
+    }
+}'
+
+Common Mappings :
+1. Field Types - String, byte, short, integer, long, float, double, boolean, date. Example - 
+"properties": {
+    "user_id": {
+        "type": "long"
+    }
+}
+
+2. Field Index - Do you want this field indexed for full-text search? analyzed/not_analyzed/no. Example - 
+"properties": {
+    "genre": {
+        "index": "not_analyzed"
+    }
+}
+
+3. Field Analyzer - Definer your tokenizer and token filter. standard/whitespace/simple/english etc. Example - 
+"properties": {
+    "description": {
+        "analyzer": "english"
+    }
+}
+Character Filter - Remove HTML encoding, convert & to and
+Tokenenizer - Split strings on whitespace punctuation/non-letters
+Token Filter - Lowercasing, stemming, synonyms, stopwords
+
+Choices For analyzers :
+1. Standard - Splits on word boundaries, remove punctuation, lowercases. Good choice if language is unknown.
+2. Simple - Splits on anything that isn't letter and lowercase.
+3. Whitespace - Splits on whitespace but doesn't lowercase.
+4. Language (i.e. English) - Accounts for language-specific stopwords and stemming.
+
+===============================================================================================================
+
+How to curl request without using repeatative -H ?
+1. Make a directory "bin" (mkdir bin) under home directory "/home/goelg.
+2. cd bin
+3. nano curl will open file with name as curl, write below content :
+    #!/bin/bash
+    /usr/bin/curl -H "Content-Type: application/json" "$@"
+    Press CTRL+O to save and press CTRL+X to exit.
+4. Type below in sequence - chmod a+x curl, cd ~, source .profile, which curl
+
+Import single movie:
+
+Create Schema Mapping:
+curl -XPUT 127.0.0.1:9200/movies -d '
+{
+    "mappings" : {
+        "properties" : {
+            "year" : {
+                "type" : "date"
+            }
+        }
+    }
+}'
+To verify:
+curl -XGET 127.0.0.1:9200/movies/_mapping
+
+Import/Create single movie:
+curl -XPOST 127.0.0.1:9200/movies/_doc/109487 -d '
+{
+    "genre" : ["IMAX","Sci-Fi"],
+    "title" : "Interstellar",
+    "year" : 2014
+}'
+To verify:
+curl -XGET 127.0.0.1:9200/movies/_search?pretty
+
+=====================================================================================================
+
+Import many documents:
+curl -XPUT 127.0.0.1:9200/_bulk?pretty --data-binary @movies.json
+movies.json - sample file contains data typed by hand.
+
+======================================================================================================
+
+Updating a document:
+Versions -
+- Every document has a _version field.
+- Elasticsearch documents are immutable.
+- When you update an existing document, a new document is created with incremented _version. The old document is marked for deletion.
+
+Partial Update API:
+curl -XPOST 127.0.0.1:9200/movies/_doc/109487 -d '
+{
+    "genre" : ["IMAX","Sci-Fi"],
+    "title" : "Interstellar New",
+    "year" : 2014
+}'
+OR
+curl -XPOST 127.0.0.1:9200/movies/_doc/109487/_update -d '
+{
+    "doc" : {
+        "title" : "Interstellar"
+    }
+}'
+
+========================================================================================================
+
+Deleting a document:
+curl -XDELETE 127.0.0.1:9200/movies/_doc/<doc_id>?pretty
+In real world, you will not know the doc_id you want to delete. So first you have to find doc_id then use it to delete.
+curl -XGET 127.0.0.1:9200/movies/_search?q=Dark
+
+========================================================================================================
+
+Dealing with Concurrency:
+What will happen if 2 clients are doing same changes at same time?
+
+Optimistic Concurrency Control
+{                            
+  "_index" : "movies",       
+  "_type" : "_doc",          
+  "_id" : "109487",          
+  "_version" : 3,            
+  "_seq_no" : 6,             
+  "_primary_term" : 1,       
+  "found" : true,            
+  "_source" : {              
+    "genre" : [              
+      "IMAX",                
+      "Sci-Fi"               
+    ],                       
+    "title" : "Interstellar",
+    "year" : 2014            
+  }                          
+}                            
+
+We have seq_no and primary field. To restrict an update for this seq_no and primary_term.
+curl -XPUT "127.0.0.1:9200/movies/_doc/109487?if_seq_no=6&if_primary_term=1" -d '
+{ 
+    "genre":["IMAX","Sci-fi"], 
+    "title":"Interstellar Foo", 
+    "year":2014 
+}'
+Above request will update once but if you sent the request again it will throw an exception because of restriction on seq_no and primary_term.
+
+We can also use retry_on_conflict option to manually set seq_no etc.
+curl -XPOST 127.0.0.1:9200/movies/_doc/109487/_update?retry_on_conflict=5 -d '
+> {
+>   "doc" : {
+>   "title" : "Interstellar Typo"
+>   }
+> }'
+
+==================================================================================================================
+Using Analyzers and Tokenizers:
+
+Analyzers:
+Sometimes text field should be exact-match.
+    - Using keyword mapping instead of text.
+
+Search on analyzed text fields will return anything remotely relevant.
+    - Depending on the analyzer, results will be case-insensitive, stemmed, stopwords removed,synonyms applied etc.
+    - Searches with multiple terms need not match them all.
+
+curl -XGET 127.0.0.1:9200/movies/_search?pretty -d '
+{
+    "query" : {
+    "match" : {
+    "title" : "Star Trek"
+    }
+    }
+}'
+Above request will use Analyzers and consider title as Text field for search. So it will return title having Star or Trek.
+Same goes with below request for genre
+curl -XGET 127.0.0.1:9200/movies/_search?pretty -d '
+{
+    "query" : {
+    "match_phrase" : {
+    "genre" : "sci"
+    }
+    }
+}'
+
+But in real world it make sense to make GENRE as EXACT match to filter. For that we need to make some changes in Analyzer itself. We can changes Analyzer for existing INDEX, we have to delete it to recreate.
+STEPS:
+1. curl -XDELETE 127.0.0.1:9200/movies
+2. curl -XPUT 127.0.0.1:9200/movies -d '
+    {
+    "mappings" : {
+    "properties" : {
+    "id" : { "type" : "integer" },
+    "year" : { "type" : "date" },
+    "genre" : { "type" : "keyword" },
+    "title" : { "type" : "text", "analyzer" : "english" }
+    }
+    }
+    }'
+3. curl -XPUT 127.0.0.1:9200/_bulk?pretty --data-binary @movies.json
+
+Now try below query:
+curl -XGET 127.0.0.1:9200/movies/_search?pretty -d '
+{                                                                
+"query" : {                                                      
+"match" : {                                                      
+"genre" : "sci-Fi"                                               
+}                                                                
+}                                                                
+}'    
+This will not work as exact match will work for genre because we declared type as Keyword. But below one will work.                                                           
+
+curl -XGET 127.0.0.1:9200/movies/_search?pretty -d '
+{                                                                
+"query" : {                                                      
+"match" : {                                                      
+"genre" : "Sci-Fi"                                               
+}                                                                
+}                                                                
+}'                        
+==============================================================================================================
+Data-Modeling and Parent/Child Relationships:
+
+1. Mapping for Index which shows relations between two indexes.
+curl -XPUT 127.0.0.1:9200/series -d '
+{
+    "mappings" : {
+    "properties" : {
+    "film_to_franchise" : {
+    "type" : "join",
+    "relations" : { "franchise" : "film" }
+}
+}
+}
+}'
+
+2. Dump data into series index:
+curl -XPUT 127.0.0.1:9200/_bulk?pretty --data-binary @series.json
+
+3. Search series index for movies with franchise as "Star Wars"
+curl -XGET 127.0.0.1:9200/_search?pretty -d '
+{                                                         
+    "query" : {                                               
+    "has_parent" : { "parent_type" : "franchise",             
+    "query" : {                                               
+    "match" : { "title" : "Star Wars" }                       
+}                                                         
+}                                                         
+}                                                         
+}'
+
+4. Search for film name and fetch franchise name.
+curl -XGET 127.0.0.1:9200/series/_search?pretty -d '
+{
+    "query" : {
+    "has_child" : { "type" : "film",
+    "query" : {
+    "match" : {
+    "title" : "The Force Awaken"
+}
+}
+}
+}
+}'
+========================================================================================================================
+Mapping Explosion:
+If there is addition of field in Index there is a change in Cluster Node state and these changes have to be present on Other Nodes as well to be in sync with master. So if there is frequent addition of field there is lots of mapping change happens as a result cluster state grows which results in memory issues and finally results in "Mapping Explosion".
+To avoid Mapping Explosion, we declare an object with multiple field as one field and declare it flattened datatype.
+
+Flattened Datatype:
+Step 1:
+curl -XPUT "http://127.0.0.1:9200/demo-default/_doc/1" -d'{
+  "message": "[5592:1:0309/123054.737712:ERROR:child_process_sandbox_support_impl_linux.cc(79)] FontService unique font name matching request did not receive a response.",
+  "fileset": {
+    "name": "syslog"
+  },
+  "process": {
+    "name": "org.gnome.Shell.desktop",
+    "pid": 3383
+  },
+  "@timestamp": "2020-03-09T18:00:54.000+05:30",
+  "host": {
+    "hostname": "bionic",
+    "name": "bionic"
+  }
+}'
+
+Step 2:
+curl -XGET "http://127.0.0.1:9200/demo-default/_mapping?pretty=true"
+To fetch mapping.
+
+Step 3:
+There is an API for cluster state which stores information like mapping, node etc.
+curl -XGET "http://127.0.0.1:9200/_cluster/state?pretty=true" >> es-cluster-state.json
+
+Step 4:
